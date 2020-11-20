@@ -1,25 +1,108 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+author: "Matías Tobar Gigoux"
+date: "20-11-2020"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### **PREGUNTA 1: ¿cuál es el número total medio de pasos dados por día?**
+```{r echo = TRUE}
+library(dplyr)
+library(data.table)
+library(ggplot2)
 
-## Loading and preprocessing the data
+Pasos <- read.csv("C:/Users/One/Desktop/Coursera/Curso 5/Tarea 1/activity.csv")
+
+Pasos$date <- as.Date(Pasos$date,format = "%Y-%m-%d")
+TotalDiaPasos <- aggregate(steps ~ date, data = Pasos, sum)
+
+hist(TotalDiaPasos$steps, xlab="Número de Pasos", ylab="Cantidad de días en el período", 
+     main = "Total de pasos dados cada día", col="blue")
+
+# Media número de pasos por día
+mean(TotalDiaPasos$steps)
+
+# Mediana número de pasos por día
+median(TotalDiaPasos$steps)
+```
+
+### **PREGUNTA 2: ¿cuál es el patrón de actividad diaria promedio?**
+```{r echo = TRUE}
+TotalIntervaloPasos <- aggregate(steps ~ interval, data = Pasos, mean)
+plot(TotalIntervaloPasos$interval,TotalIntervaloPasos$steps, type="l",xlab="Intervalo",
+     ylab="Número medio de pasos dados", main = "Promedio de pasos por intervalo", col="blue")
+```
+
+### **PREGUNTA 3**
+#### **i) número de valores faltantes**
+```{r echo = TRUE}
+sum(is.na(Pasos))
+```
+#### **ii) reemplazo de los valores faltantes**
+```{r echo = TRUE}
+TotalIntervaloPasos <- aggregate(steps ~ interval, data = Pasos, mean)
+Pasos2 <- transform(Pasos, steps = ifelse(is.na(Pasos$steps), 
+                                          yes = TotalIntervaloPasos$steps, no = Pasos$steps))
+```
+
+##### **¿Difiere con respecto a gráfico anterior?. Para ello, debemos ver con un nuevo gráfico**
+```{r echo = TRUE}
+TotalIntervaloPasos2 <- aggregate(steps ~ interval, data = Pasos2, mean)
+plot(TotalIntervaloPasos2$interval,TotalIntervaloPasos2$steps, type="l",xlab="Intervalo",
+     ylab="Número medio de pasos dados", main = "Promedio de pasos por intervalo", col="red")
+
+# No se observan diferencias
+```
+
+#### **iii) ¿Difiere con respecto a primer histograma?. No se observan diferencias sustantivas**
+```{r echo = TRUE}
+TotalDiaPasos2 <- aggregate(steps ~ date, data = Pasos2, sum)
+
+hist(TotalDiaPasos2$steps, xlab="Número de Pasos", ylab="Cantidad de días en el período", 
+     main = "Total de pasos dados cada día", col="darkblue")
+
+# Media número de pasos por día
+mean(TotalDiaPasos2$steps)
+
+# Mediana número de pasos por día
+median(TotalDiaPasos2$steps)
+```
 
 
+### **PREGUNTA 4**
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
+#### **Se crean tablas diferenciadas para hacer la distinción por tipo de día dentro de la semana**
+```{r echo = TRUE}
+Pasos3 <- mutate(Pasos2, TipoDia = ifelse((weekdays(Pasos2$date)=="sábado" | weekdays(Pasos2$date)=="domingo"), 
+                                          yes = "FindeSemana", no = "DiaSemana"))
+Pasos4 <- Pasos3[Pasos3$TipoDia == "FindeSemana",]
+Pasos5 <- Pasos3[Pasos3$TipoDia == "DiaSemana",]
+```
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+#### **- Se grafica considerando sólo los 2 días que componen el Fin de Semana**
+```{r echo = TRUE}
+TotalIntervaloPasos4 <- aggregate(steps ~ interval, data = Pasos4, mean)
+plot(TotalIntervaloPasos4$interval,TotalIntervaloPasos4$steps, type="l",xlab="Intervalo",
+     ylab="Número medio de pasos dados", main = "Promedio de pasos por intervalo Fin de Semana", col="darkblue")
+```
+
+#### **- Se grafica considerando sólo los días que componen la semana**
+```{r echo = TRUE}
+TotalIntervaloPasos5 <- aggregate(steps ~ interval, data = Pasos5, mean)
+plot(TotalIntervaloPasos5$interval,TotalIntervaloPasos5$steps, type="l",xlab="Intervalo",
+     ylab="Número medio de pasos dados", main = "Promedio de pasos por intervalo Día de Semana", col="darkred")
+```
+
+#### **- Se genera el Plot utilizando ggplot2 con distinción de ambos tipos de díaas dentro de la semana**
+```{r echo = TRUE}
+PasosWeekdays <- rbind(Pasos4,Pasos5)
+TotalIntervaloPasosWeekdays <- aggregate(steps ~ interval+TipoDia, PasosWeekdays, mean)
+
+ggplot(TotalIntervaloPasosWeekdays, aes(x = interval, y = steps, fill = TipoDia)) + geom_line() +
+  facet_grid(.~ TipoDia) + xlab("Intervalo") + ylab(expression("Número medio de pasos dados")) + 
+  ggtitle(expression("Promedio de pasos por intervalo"))
+```
